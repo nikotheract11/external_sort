@@ -13,6 +13,15 @@ typedef struct Record {
 	char city[20];
 } Record;
 
+void quicksort(int fd, int low, int high, int firstb,int bfsize, int field);
+int partition (int fd, int low, int high, int firstb,int bfsize, int field);
+void swap(char** data,int i, int j);
+int compare(Record r1,Record r2, int field);
+int intcmp(Record r1, Record r2);
+int cmpstr(Record r1, Record r2, int field);
+Record getRec(int fd,int n,int firstb);
+Record getrec(char **d,int i);
+
 /*
  * Η συνάρτηση SR_Init χρησιμοποιείται για την αρχικοποίηση του sort_file.
  * Σε περίπτωση που εκτελεστεί επιτυχώς, επιστρέφεται SR_OK, ενώ σε
