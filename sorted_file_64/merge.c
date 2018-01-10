@@ -38,25 +38,44 @@ void merge(int fileDesc, int bufferSize, int fieldNo)
     data[i] = BF_Block_GetData(block[i]);
   }
 
-  int prev_min;
-  prev_min = minIndex(data,position,bufferSize); // find min
+  int prev_min; // position of changed data , block, position
+  prev_min = minIndex(data,position,bufferSize,fieldNo); // find min
   check_block(fileDesc,prev_min,data,position,block,bufferSize,curr_block,blocks_num);
 
 
 
 }
 
-int minIndex(char** data,int* position, int bufferSize)
+int minIndex(char** data,int* position,int* curr_block, int bufferSize, int fieldNo)
 {
 
   char* min;
 
-  for(int i = 0; i < bufferSize-1; i++)
-    if(compare(data[i+]))
-    ...
-    break;
+  int counter = 0, indicator = 0;   // indicator points to min block using
+  for(int i = 0; i < bufferSize-1; i++){
+    if(curr_block[i] == -1) // end of the blocks in this group
+      counter++;    // if counter == bufferSize-1 ---> end of iteration
+    else{
+      indicator = i;
+      min = data[indicator];
+      break;
+    }
+  }
 
-  data[bufferSize]...
+  if(counter == bufferSize-1) // all blocks sorted
+    return -1;
+
+  int minpos = indicator;
+  for(int i = indicator+1; i < bufferSize-1; i++)
+    if(curr_block[i] != -1){
+      if(compare(min,curr_block[i],fieldNo)) // see what compare returns and what means // i want min > cur_block[i]
+        min = data[i+position[i]];    // ??
+        minpos = i; // position in data array
+    }
+
+  data[minpos]-->move one record
+
+  data[bufferSize-1]...   // last place takes the new record
 
   return i;
 }
@@ -70,40 +89,6 @@ int check_block(int fd, int prev_min,char** data,int* position,BF_Block** block,
           BF_GetBlock(fd,curr_block[prev_min],block[prev_min]);
         else
           curr_block[prev_min] = -1;
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function that takes bufferSize-1 blocks and
-// merges them
-
-void merge_block(int fileDesc, int blocks_sum, int* blocks)
-{
-  BF_Block *block;
-  BF_Block_Init(&block);
-
-  char** data;
-  for(int i = 0; i < blocks_sum; i++)       // blocks_sum pointers to blocks
-    BF_GetBlock(fileDesc,i*bufferSize+1,block);
-    data[i] = (char*)malloc(sizeof(block));
 }
 
 int compare(Record r1,Record r2, int field)
