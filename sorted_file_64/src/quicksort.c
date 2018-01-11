@@ -7,9 +7,6 @@
 
 void quicksort(int fd, int low, int high, int firstb,int bfsize, int field){
 	if(low < high){
-		int bn,max;
-		BF_GetBlockCounter(fd,&bn);
-	//	if(i+firstb>=bn-1) break;)
 		int pi = partition(fd,low,high,firstb,bfsize,field);
 
 		quicksort(fd,low,pi-1,firstb,bfsize,field);
@@ -26,24 +23,15 @@ int partition (int fd, int low, int high, int firstb,int bfsize, int field){
         char *data[bfsize] ;
   int bn,max;
 	BF_GetBlockCounter(fd,&bn);
-	//if (firstb==0) firstb++;
-	for(int i=0;i<bfsize;i++){		// ========= index? ========== //
+	for(int i=0;i<bfsize;i++){
 		max=i;
 
 		if(BF_GetBlock(fd,firstb+i,block[i]) != BF_OK) printf("GetBlock error\n");
 		data[i] = BF_Block_GetData(block[i]);
 		if(i+firstb>=bn-1) break;
 	}
-	//int max=i;
 
 	/*	find high	*/
-	//if(high/17 + firstb >=bn) {//return (low -1 );
-	/*if(firstb+max >= bn-1){
-		int temp;
-		memcpy(&temp,data[max],sizeof(int));
-		//printf("%d\n", temp);//temp;
-		high-= (17-temp);
-	}*/
 	Record pivot = getrec(data,high);
 	printf("pivot:%s\n",pivot.name );
 	int i = low - 1;

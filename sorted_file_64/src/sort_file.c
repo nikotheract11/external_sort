@@ -120,6 +120,7 @@ SR_ErrorCode SR_SortedFile(
 		if(bufferSize<blocks_num-1-b)quicksort(fd,0,17*(bufferSize)-1,b,bufferSize,fieldNo);
 		else quicksort(fd,0,16*(blocks_num-1-b)+getentries(fd)-1,b,bufferSize,fieldNo);
 		b+=bufferSize;
+		printf("=======================================================\n" );
 		//i+=bufferSize*17;
 	}
 	return SR_OK;
