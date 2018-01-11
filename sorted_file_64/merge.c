@@ -38,11 +38,12 @@ int compare(char* d1, char* d2, int fieldNo)
   return strncmp(d1,d2,get_field(fieldNo));
 }
 
-int check_block(int fd, int prev_min,char** data,int* position,BF_Block** block,int bufferSize,int* curr_block,int blocks_num)
+int check_block(int fd, int prev_min,char** data,int* position,
+  BF_Block** block,int bufferSize,int* curr_block,int blocks_num,int gend)
 {
   if(curr_block[prev_min] != -1)  // set -1 to know that we stopped using this group
     if(position[prev_min] == limit)  // end of block
-      if(curr_block[prev_min] + 1 == (prev_min+1)*bufferSize+1) //we enterd other group
+      if(curr_block[prev_min] + 1 == prev_min*gend + 1) //we enterd other group
         if(++curr_block[prev_min] < blocks_num - 1)
           BF_GetBlock(fd,curr_block[prev_min],block[prev_min]);
         else
@@ -70,24 +71,37 @@ void merge(int fileDesc, int bufferSize, int fieldNo)
   // data array from blocks loaded
   char* data[bufferSize];
   for(int i = 0; i < bufferSize; i++){
-    if(i != bufferSize-1) curr_block[i] = i*bufferSize+1;    // starting block from every group
-    BF_GetBlock(fileDesc,i*bufferSize+1,block[i]);  // get the first block from the groups (as much, as the buffer can hold)
+    if(i != bufferSize-1) curr_block[i] = i*(bufferSize-1)+1;    // starting block from every group
+    BF_GetBlock(fileDesc,curr_block[i],block[i]);  // get the first block from the groups (as much, as the buffer can hold)
     data[i] = BF_Block_GetData(block[i]);
   }
 
   int prev_min = 0; // position of changed data, block, position
-  int l = ceil(log(blocks_num)/log(bufferSize-1));
+  int l = ceil(log(blocks_num)/log(bufferSize-1));  // how many iterations should be done
 
-  while(loops > 1){
-    while(prev_min != -1){
-      prev_min = minIndex(data,position,bufferSize,fieldNo); // find min
-      check_block(fileDesc,prev_min,data,position,block,bufferSize,curr_block,blocks_num);
+  int gend; // used for start and end of every iteration
+  int var = bufferSize-1;  // limit for groups
+  for(int k = 0; k < l; k++){
+
+    // calculation of current groups
+    for(int j = 0; j < k; j++){
+      var *= var;
+      //var++;  // avoid block 0 impact
     }
 
-    for(int i = 0; i < bufferSize; i++){
+    for(int w = 1; w < blocks_num; w += var){   // iteration for whole merge of a level
+      gend = w;  // ?
+      while(prev_min != -1){
+        prev_min = minIndex(data,position,bufferSize,fieldNo); // find min
+        check_block(fileDesc,prev_min,data,position,block,bufferSize,curr_block,blocks_num,gend);
+      }
+    }
+
+    for(int i = 0; i < bufferSize; i++){  // re initiallize
       position[i] = 0;
-      if(i != bufferSize-1) curr_block[i] = i*bufferSize+1 + l;
-      BF_GetBlock(fileDesc,i*bufferSize+1+l,block[i]);
+      //if(var > blocks_num) break;
+      if(i != bufferSize-1) curr_block[i] = i*var + 1;
+      BF_GetBlock(fileDesc,curr_block[i],block[i]);
       data[i] = BF_Block_GetData(block[i]);
     }
   }
@@ -129,7 +143,3 @@ int minIndex(char** data,int* position,int* curr_block, int bufferSize, int fiel
 
   return minpos;
 }
-
-//int compare(Record r1,Record r2, int field) // r2-r1
-//void minIndex(char** data,int* position);
-//compare;
