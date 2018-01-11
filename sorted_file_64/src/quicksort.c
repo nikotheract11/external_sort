@@ -26,7 +26,7 @@ int partition (int fd, int low, int high, int firstb,int bfsize, int field){
         char *data[bfsize] ;
   int bn,max;
 	BF_GetBlockCounter(fd,&bn);
-	if (firstb==0) firstb++;
+	//if (firstb==0) firstb++;
 	for(int i=0;i<bfsize;i++){		// ========= index? ========== //
 		max=i;
 
@@ -38,17 +38,17 @@ int partition (int fd, int low, int high, int firstb,int bfsize, int field){
 
 	/*	find high	*/
 	//if(high/17 + firstb >=bn) {//return (low -1 );
-	if(firstb+max >= bn-1){
+	/*if(firstb+max >= bn-1){
 		int temp;
 		memcpy(&temp,data[max],sizeof(int));
-		printf("%d\n", temp);//temp;
+		//printf("%d\n", temp);//temp;
 		high-= (17-temp);
-	}
+	}*/
 	Record pivot = getrec(data,high);
 	printf("pivot:%s\n",pivot.name );
 	int i = low - 1;
-	for(int j=low;j<(high-1);j++){
-		printf("%d\n",j );
+	for(int j=low;j<=(high-1);j++){
+		//printf("%d\n",j );
 		Record cur = getrec(data,j);
 		int cmp = compare(pivot,cur,field);
 
@@ -129,7 +129,7 @@ Record getRec(int fd,int n,int firstb){
 Record getrec(char **d,int i){
 	int bn = i/17;
 	//bn += curblock;
-	printf("%d\n",bn );
+	//printf("%d\n",bn );
 	char* data = d[bn];
 
 	int off = (i%17)*sizeof(Record);
@@ -190,4 +190,20 @@ int getEntries(int fd){
 	BF_UnpinBlock(tblock);
 	BF_Block_Destroy(&tblock);
 	return entries+le;
+}
+
+int getentries(int fd){
+	BF_Block *tblock;
+	BF_Block_Init(&tblock);
+	char *tdata;
+	int le,blocks;
+
+	BF_GetBlockCounter(fd,&blocks);
+	BF_GetBlock(fd,blocks-1,tblock);
+	tdata = BF_Block_GetData(tblock);
+	memcpy(&le,tdata,sizeof(int));
+	printf("%d\n",le );
+	BF_UnpinBlock(tblock);
+	BF_Block_Destroy(&tblock);
+	return le;
 }
