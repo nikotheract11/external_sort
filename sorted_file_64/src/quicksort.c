@@ -33,7 +33,7 @@ int partition (int fd, int low, int high, int firstb,int bfsize, int field){
 
 	/*	find high	*/
 	Record pivot = getrec(data,high);
-	printf("pivot:%s\n",pivot.name );
+//	printf("pivot:%s\n",pivot.name );
 	int i = low - 1;
 	for(int j=low;j<=(high-1);j++){
 		//printf("%d\n",j );
@@ -96,7 +96,7 @@ int cmpstr(Record r1, Record r2, int field){
 }
 
 
-
+/*
 Record getRec(int fd,int n,int firstb){
 	int b_n = n/17;
 	b_n += firstb;
@@ -112,7 +112,7 @@ Record getRec(int fd,int n,int firstb){
 				BF_Block_Destroy(&tblock);
         return rec;
 }
-
+*/
 
 Record getrec(char **d,int i){
 	int bn = i/17;
@@ -138,20 +138,20 @@ int copyfile(int fd){
 
 	SR_CreateFile("temp");
 	int nfd;
-	SR_OpenFile("temp",&fd);
+	SR_OpenFile("temp",&nfd);
 
 	char *tdata,*data;
 	int blocks;
 	BF_GetBlockCounter(fd,&blocks);
 
-	for(int i=0;i<blocks;i++){
-		BF_GetBlock(fd,i,block);
-		BF_GetBlock(nfd,i,tblock);
-
+	for(int i=1;i<blocks;i++){
+		if(BF_GetBlock(fd,i,block) != BF_OK) printf("getb err====\n");
+		if(BF_AllocateBlock(nfd,tblock) != BF_OK) printf("allc err====\n");
+		//BF_GetBlock(nfd,i,tblock);
 		data=BF_Block_GetData(block);
 		tdata=BF_Block_GetData(tblock);
 
-		memcpy(tdata,data,BF_BLOCK_SIZE);
+		memcpy(tdata,data,BF_BLOCK_SIZE-1);
 		BF_UnpinBlock(block);
 		BF_Block_SetDirty(tblock);
 		BF_UnpinBlock(tblock);
@@ -190,7 +190,7 @@ int getentries(int fd){
 	BF_GetBlock(fd,blocks-1,tblock);
 	tdata = BF_Block_GetData(tblock);
 	memcpy(&le,tdata,sizeof(int));
-	printf("%d\n",le );
+	//printf("%d\n",le );
 	BF_UnpinBlock(tblock);
 	BF_Block_Destroy(&tblock);
 	return le;
