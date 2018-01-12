@@ -37,6 +37,11 @@ int main() {
   printf("Sorting sorted_surname.db file in 'field' ...");
   printf("eee=%d\n",getEntries(fd) );
 //  CALL_OR_DIE(SR_SortedFile("unsorted_data.db", "sorted_id.db", 0, 9))
+
+  SR_CloseFile(fd);
+  SR_OpenFile("sorted_name.db",&fd);
+
   SR_PrintAllEntries(fd);
+  SR_CloseFile(fd);
   BF_Close();
 }
