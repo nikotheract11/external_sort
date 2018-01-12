@@ -37,7 +37,7 @@ Record get_rec(char* data,int pos ,int fieldNo)
   int offset = sizeof(int) + pos*sizeof(Record);
 
   Record temp;
-  memcpy(&temp,&data[offset],sizeof(get_field));
+  memcpy(&temp,&data[offset],sizeof(Record));
   return temp;
 }
 
@@ -55,9 +55,8 @@ int check_block(int fd,int fd2, int prev_min,char** data,int* position,BF_Block*
   memcpy(&climit,data[prev_min],sizeof(int));    // get current limit
 
   if(position[prev_min] == climit)  // end of block
-    if(curr_block[prev_min] + 1 == (prev_min+1)*gend + 1) //we enterd other group
-
-      if(++curr_block[prev_min] < blocks_num - 1){
+    if(++curr_block[prev_min] < blocks_num - 1)
+      if(curr_block[prev_min] + 1 == (prev_min+1)*gend + 1){ //we enterd other group
         BF_GetBlock(fd,curr_block[prev_min],block[prev_min]);
         data[prev_min] = BF_Block_GetData(block[prev_min]);
         BF_UnpinBlock(block[prev_min]);
@@ -69,11 +68,14 @@ int check_block(int fd,int fd2, int prev_min,char** data,int* position,BF_Block*
       curr_block[prev_min] = -1;
 
   if(position[bufferSize-1] == limit){  // new output block
-    BF_UnpinBlock(block[bufferSize-1]);
     BF_Block_SetDirty(block[bufferSize-1]);
+    BF_UnpinBlock(block[bufferSize-1]);
     BF_AllocateBlock(fd2,block[bufferSize-1]);
+    int n;
+    BF_GetBlockCounter(fd2,&n);
+    curr_block[bufferSize-1] = n-1;
     position[bufferSize-1] = 0;
-    curr_block[bufferSize-1]++;
+    //curr_block[bufferSize-1]++;
   }
 }
 
@@ -99,7 +101,7 @@ int minIndex(char** data,int* position,int* curr_block, int bufferSize, int fiel
   int minpos = indicator;
   for(int i = indicator+1; i < bufferSize-1; i++)
     if(curr_block[i] != -1){
-      if(compare2(min,get_rec(data[i],position[i],fieldNo),fieldNo) > 0) // see what compare returns and what means // i want min > cur_block[i]
+      if(compare2(min,get_rec(data[i],position[i],fieldNo),fieldNo) < 0) // see what compare returns and what means // i want min > cur_block[i]
         min = get_rec(data[i],position[i],fieldNo);
         minpos = i; // position in data array
     }
@@ -109,6 +111,7 @@ int minIndex(char** data,int* position,int* curr_block, int bufferSize, int fiel
 
   //data[minpos]-->move one record
   position[minpos]++; // move it, it will be checked in check_block
+  position[bufferSize-1]++;
 
   return minpos;
 }
@@ -168,13 +171,23 @@ int l = 10;
       var *= var;
       //var++;  // avoid block 0 impact
     }
-
-    for(int w = 1; w < blocks_num-1; w += var){   // iteration for whole merge of a level
+int groups = 0; // iterator for groups
+    for(int w = 1; w < blocks_num&& groups < blocks_num; w += var){   // iteration for whole merge of a level
       gend = w;  // ?
       while(prev_min != -1){
         prev_min = minIndex(data,position,curr_block,bufferSize,fieldNo); // find min
+        if(prev_min == -1)
+          break;
         check_block(fileDesc,fd,prev_min,data,position,block,bufferSize,curr_block,blocks_num,gend);
       }
+      //next group Initializations
+      for(int i = 0; i < bufferSize-1; i++){
+        position[i] = 0;
+        curr_block[i] = i*var*groups + 1;
+        BF_GetBlock(fileDesc,curr_block[i],block[i]);
+        data[i] = BF_Block_GetData(block[i]);
+      }
+      groups++;
     }
 
     for(int i = 0; i < bufferSize; i++){  // re initiallize
@@ -186,7 +199,7 @@ int l = 10;
     }
   }
 
-  SR_CloseFile(fileDesc);
-  SR_CloseFile(fd);
+  //SR_CloseFile(fileDesc);
+  //SR_CloseFile(fd);
 
 }
