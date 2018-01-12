@@ -32,39 +32,46 @@ void write_rec(char* data, char* src, int dpos, int spos)
   memcpy(&data[offsetd],&src[offsetp],sizeof(Record));
 }
 
-char* get_rec(char* data,int pos ,int fieldNo)
+Record get_rec(char* data,int pos ,int fieldNo)
 {
-  int offset = sizeof(int) + pos*sizeof(Record) + get_offset(fieldNo);
+  int offset = sizeof(int) + pos*sizeof(Record);
 
-  char* temp = (char*)malloc(sizeof(char));
-  memcpy(temp,&data[offset],sizeof(get_field));
+  Record temp;
+  memcpy(&temp,&data[offset],sizeof(get_field));
+  return temp;
 }
 
-int compare2(char* d1, char* d2, int fieldNo)
+int compare2(Record r1, Record r2, int fieldNo)
 {
-  return strncmp(d1,d2,get_field(fieldNo));
+  if(!fieldNo) return r1.id < r2.id;
+  else if(fieldNo == 1) return strncmp(r1.name,r2.name,15);
+  else if(fieldNo == 2) return strncmp(r1.surname,r2.surname,20);
+  else if(fieldNo == 3) return strncmp(r1.city,r2.city,20);
 }
 
-int check_block(int fd, int prev_min,char** data,int* position,BF_Block** block,int bufferSize,int* curr_block,int blocks_num,int gend)
+int check_block(int fd,int fd2, int prev_min,char** data,int* position,BF_Block** block,int bufferSize,int* curr_block,int blocks_num,int gend)
 {
   int climit;
   memcpy(&climit,data[prev_min],sizeof(int));    // get current limit
 
   if(position[prev_min] == climit)  // end of block
-    if(curr_block[prev_min] + 1 == prev_min*gend + 1) //we enterd other group
+    if(curr_block[prev_min] + 1 == (prev_min+1)*gend + 1) //we enterd other group
+
       if(++curr_block[prev_min] < blocks_num - 1){
         BF_GetBlock(fd,curr_block[prev_min],block[prev_min]);
         data[prev_min] = BF_Block_GetData(block[prev_min]);
+        BF_UnpinBlock(block[prev_min]);
       }
       else
         curr_block[prev_min] = -1;
     else
-      curr_block[prev_min]++;
+      //curr_block[prev_min]++;
+      curr_block[prev_min] = -1;
 
   if(position[bufferSize-1] == limit){  // new output block
     BF_UnpinBlock(block[bufferSize-1]);
     BF_Block_SetDirty(block[bufferSize-1]);
-    BF_AllocateBlock(fd,block[bufferSize-1]);
+    BF_AllocateBlock(fd2,block[bufferSize-1]);
     position[bufferSize-1] = 0;
     curr_block[bufferSize-1]++;
   }
@@ -73,7 +80,7 @@ int check_block(int fd, int prev_min,char** data,int* position,BF_Block** block,
 int minIndex(char** data,int* position,int* curr_block, int bufferSize, int fieldNo)
 {
 
-  char* min;
+  Record min;
 
   int counter = 0, indicator = 0;   // indicator points to min block using
   for(int i = 0; i < bufferSize-1; i++){
@@ -110,13 +117,13 @@ void merge(int fileDesc, int bufferSize, int fieldNo, const char* fileName)
 {
   int fd;
   SR_CreateFile(fileName);  // output file
-  SR_OpenFile("temp",&fileDesc);  // temp
+  SR_OpenFile("unsorted_data.db",&fileDesc);  // temp
   SR_OpenFile(fileName,&fd);      // output
 
   int blocks_num;   // total blocks number
   BF_GetBlockCounter(fileDesc,&blocks_num);
 
-  int numberOfGroups = blocks_num/bufferSize + 1;   // +1 because we want the ceil of number
+  //int numberOfGroups = blocks_num/bufferSize + 1;   // +1 because we want the ceil of number
   int position[bufferSize];       // for every buffer the position in block of the element we check
   int curr_block[bufferSize];      // for every buffer current block number using
 
@@ -130,17 +137,27 @@ void merge(int fileDesc, int bufferSize, int fieldNo, const char* fileName)
 
   // data array from blocks loaded
   char* data[bufferSize];
+
+  BF_GetBlock(fileDesc,0,block[0]);     //
+  data[0] = BF_Block_GetData(block[0]); // write block
+  BF_GetBlock(fd,0,block[1]);           // 0 as it is
+  data[1] = BF_Block_GetData(block[1]); //
+  memcpy(data[1],data[0],BF_BLOCK_SIZE);//
+  BF_Block_SetDirty(block[1]);          //
+  BF_UnpinBlock(block[1]);              //
+
   for(int i = 0; i < bufferSize-1; i++){
-    if(i != bufferSize-1) curr_block[i] = i*(bufferSize-1)+1;    // starting block from every group
+    curr_block[i] = i*(bufferSize-1)+1;    // starting block from every group
     BF_GetBlock(fileDesc,curr_block[i],block[i]);  // get the first block from the groups (as much, as the buffer can hold)
     data[i] = BF_Block_GetData(block[i]);
   }
-  BF_AllocateBlock(fileDesc,block[bufferSize-1]);             // for the output
+  BF_AllocateBlock(fd,block[bufferSize-1]);             // for the output
   data[bufferSize-1] = BF_Block_GetData(block[bufferSize-1]); // block
 
 
   int prev_min = 0; // position of changed data, block, position
-  int l = ceil(log(blocks_num)/log(bufferSize-1));  // how many iterations should be done
+  //int l = ceil(log(blocks_num)/log(bufferSize-1));  // how many iterations should be done
+int l = 10;
 
   int gend; // used for start and end of every iteration
   int var = bufferSize-1;  // limit for groups
@@ -156,7 +173,7 @@ void merge(int fileDesc, int bufferSize, int fieldNo, const char* fileName)
       gend = w;  // ?
       while(prev_min != -1){
         prev_min = minIndex(data,position,curr_block,bufferSize,fieldNo); // find min
-        check_block(fileDesc,prev_min,data,position,block,bufferSize,curr_block,blocks_num,gend);
+        check_block(fileDesc,fd,prev_min,data,position,block,bufferSize,curr_block,blocks_num,gend);
       }
     }
 
@@ -168,5 +185,8 @@ void merge(int fileDesc, int bufferSize, int fieldNo, const char* fileName)
       data[i] = BF_Block_GetData(block[i]);
     }
   }
+
+  SR_CloseFile(fileDesc);
+  SR_CloseFile(fd);
 
 }
