@@ -120,11 +120,11 @@ SR_ErrorCode SR_SortedFile(
 		if(bufferSize<blocks_num-1-b)quicksort(fd,0,17*(bufferSize)-1,b,bufferSize,fieldNo);
 		else quicksort(fd,0,16*(blocks_num-1-b)+getentries(fd)-1,b,bufferSize,fieldNo);
 		b+=bufferSize;
-		printf("=======================================================\n" );
+		//printf("=======================================================\n" );
 		//i+=bufferSize*17;
 	}
 
-	//merge(fd,bufferSize,fieldNo,output_filename);
+	merge(fd,bufferSize,fieldNo,output_filename);
 
 	return SR_OK;
 }
