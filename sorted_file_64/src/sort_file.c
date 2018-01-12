@@ -1,8 +1,8 @@
-#include "sort_file.h"
 #include "bf.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "sort_file.h"
 
 int copyfile(int);
 int getEntries(int);
@@ -123,6 +123,9 @@ SR_ErrorCode SR_SortedFile(
 		printf("=======================================================\n" );
 		//i+=bufferSize*17;
 	}
+
+	//merge(fd,bufferSize,fieldNo,output_filename);
+
 	return SR_OK;
 }
 

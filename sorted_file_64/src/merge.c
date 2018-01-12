@@ -1,3 +1,10 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include "bf.h"
+#include "sort_file.h"
+
 int limit = BF_BLOCK_SIZE/sizeof(Record); // probably in init()
 
 int get_field(int fieldNo)
@@ -33,26 +40,79 @@ char* get_rec(char* data,int pos ,int fieldNo)
   memcpy(temp,&data[offset],sizeof(get_field));
 }
 
-int compare(char* d1, char* d2, int fieldNo)
+int compare2(char* d1, char* d2, int fieldNo)
 {
   return strncmp(d1,d2,get_field(fieldNo));
 }
 
-int check_block(int fd, int prev_min,char** data,int* position,
-  BF_Block** block,int bufferSize,int* curr_block,int blocks_num,int gend)
+int check_block(int fd, int prev_min,char** data,int* position,BF_Block** block,int bufferSize,int* curr_block,int blocks_num,int gend)
 {
-  if(curr_block[prev_min] != -1)  // set -1 to know that we stopped using this group
-    if(position[prev_min] == limit)  // end of block
-      if(curr_block[prev_min] + 1 == prev_min*gend + 1) //we enterd other group
-        if(++curr_block[prev_min] < blocks_num - 1)
-          BF_GetBlock(fd,curr_block[prev_min],block[prev_min]);
-        else
-          curr_block[prev_min] = -1;
-  return 0;
+  int climit;
+  memcpy(&climit,data[prev_min],sizeof(int));    // get current limit
+
+  if(position[prev_min] == climit)  // end of block
+    if(curr_block[prev_min] + 1 == prev_min*gend + 1) //we enterd other group
+      if(++curr_block[prev_min] < blocks_num - 1){
+        BF_GetBlock(fd,curr_block[prev_min],block[prev_min]);
+        data[prev_min] = BF_Block_GetData(block[prev_min]);
+      }
+      else
+        curr_block[prev_min] = -1;
+    else
+      curr_block[prev_min]++;
+
+  if(position[bufferSize-1] == limit){  // new output block
+    BF_UnpinBlock(block[bufferSize-1]);
+    BF_Block_SetDirty(block[bufferSize-1]);
+    BF_AllocateBlock(fd,block[bufferSize-1]);
+    position[bufferSize-1] = 0;
+    curr_block[bufferSize-1]++;
+  }
 }
 
-void merge(int fileDesc, int bufferSize, int fieldNo)
+int minIndex(char** data,int* position,int* curr_block, int bufferSize, int fieldNo)
 {
+
+  char* min;
+
+  int counter = 0, indicator = 0;   // indicator points to min block using
+  for(int i = 0; i < bufferSize-1; i++){
+    if(curr_block[i] == -1) // end of the blocks in this group
+      counter++;    // if counter == bufferSize-1 ---> end of iteration
+    else{
+      indicator = i;
+      min = get_rec(data[indicator],position[indicator],fieldNo);  // !!!! sth thesh position[indicator]
+      break;
+    }
+  }
+
+  if(counter == bufferSize-1) // all blocks sorted
+    return -1;
+
+  int minpos = indicator;
+  for(int i = indicator+1; i < bufferSize-1; i++)
+    if(curr_block[i] != -1){
+      if(compare2(min,get_rec(data[i],position[i],fieldNo),fieldNo) > 0) // see what compare returns and what means // i want min > cur_block[i]
+        min = get_rec(data[i],position[i],fieldNo);
+        minpos = i; // position in data array
+    }
+
+  //data[bufferSize-1]...   // last place takes the new record
+  write_rec(data[bufferSize-1],data[minpos],position[bufferSize-1],position[minpos]);
+
+  //data[minpos]-->move one record
+  position[minpos]++; // move it, it will be checked in check_block
+
+  return minpos;
+}
+
+void merge(int fileDesc, int bufferSize, int fieldNo, const char* fileName)
+{
+  int fd;
+  SR_CreateFile(fileName);  // output file
+  SR_OpenFile("temp",&fileDesc);  // temp
+  SR_OpenFile(fileName,&fd);      // output
+
   int blocks_num;   // total blocks number
   BF_GetBlockCounter(fileDesc,&blocks_num);
 
@@ -70,11 +130,14 @@ void merge(int fileDesc, int bufferSize, int fieldNo)
 
   // data array from blocks loaded
   char* data[bufferSize];
-  for(int i = 0; i < bufferSize; i++){
+  for(int i = 0; i < bufferSize-1; i++){
     if(i != bufferSize-1) curr_block[i] = i*(bufferSize-1)+1;    // starting block from every group
     BF_GetBlock(fileDesc,curr_block[i],block[i]);  // get the first block from the groups (as much, as the buffer can hold)
     data[i] = BF_Block_GetData(block[i]);
   }
+  BF_AllocateBlock(fileDesc,block[bufferSize-1]);             // for the output
+  data[bufferSize-1] = BF_Block_GetData(block[bufferSize-1]); // block
+
 
   int prev_min = 0; // position of changed data, block, position
   int l = ceil(log(blocks_num)/log(bufferSize-1));  // how many iterations should be done
@@ -89,10 +152,10 @@ void merge(int fileDesc, int bufferSize, int fieldNo)
       //var++;  // avoid block 0 impact
     }
 
-    for(int w = 1; w < blocks_num; w += var){   // iteration for whole merge of a level
+    for(int w = 1; w < blocks_num-1; w += var){   // iteration for whole merge of a level
       gend = w;  // ?
       while(prev_min != -1){
-        prev_min = minIndex(data,position,bufferSize,fieldNo); // find min
+        prev_min = minIndex(data,position,curr_block,bufferSize,fieldNo); // find min
         check_block(fileDesc,prev_min,data,position,block,bufferSize,curr_block,blocks_num,gend);
       }
     }
@@ -106,40 +169,4 @@ void merge(int fileDesc, int bufferSize, int fieldNo)
     }
   }
 
-}
-
-int minIndex(char** data,int* position,int* curr_block, int bufferSize, int fieldNo)
-{
-
-  char* min;
-
-  int counter = 0, indicator = 0;   // indicator points to min block using
-  for(int i = 0; i < bufferSize-1; i++){
-    if(curr_block[i] == -1) // end of the blocks in this group
-      counter++;    // if counter == bufferSize-1 ---> end of iteration
-    else{
-      indicator = i;
-      min = data[indicator];  // !!!! sth thesh position[indicator]
-      break;
-    }
-  }
-
-  if(counter == bufferSize-1) // all blocks sorted
-    return -1;
-
-  int minpos = indicator;
-  for(int i = indicator+1; i < bufferSize-1; i++)
-    if(curr_block[i] != -1){
-      if(compare(min,get_rec(data[i],position[i],fieldNo) < 0) // see what compare returns and what means // i want min > cur_block[i]
-        min = get_rec(data[i],position[i],fieldNo);
-        minpos = i; // position in data array
-    }
-
-  //data[minpos]-->move one record
-  position[minpos]++; // move it, it will be checked in check_block
-
-  //data[bufferSize-1]...   // last place takes the new record
-  write_rec(data[bufferSize-1],data[minpos],position[bufferSize-1],position[minpos]);
-
-  return minpos;
 }
