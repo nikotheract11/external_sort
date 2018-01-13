@@ -110,19 +110,21 @@ SR_ErrorCode SR_SortedFile(
 	int fd,nfd;
 	BF_Init(LRU);
 	SR_OpenFile(input_filename,&fd);
-	//nfd=copyfile(fd);
+	nfd=fd;//
+	int k=copyfile(fd);
 	int blocks_num;
-	BF_GetBlockCounter(fd,&blocks_num);
+	BF_GetBlockCounter(nfd,&blocks_num);
 	int b=1;
 	for(b=1;b<blocks_num;){
 		if(b>=blocks_num) break;
 		//if(i>=blocks_num-1) return SR_OK;
-		if(bufferSize<blocks_num-1-b)quicksort(fd,0,17*(bufferSize)-1,b,bufferSize,fieldNo);
-		else quicksort(fd,0,16*(blocks_num-1-b)+getentries(fd)-1,b,bufferSize,fieldNo);
+		if(bufferSize<blocks_num-1-b)quicksort(nfd,0,17*(bufferSize)-1,b,bufferSize,fieldNo);
+		else quicksort(nfd,0,16*(blocks_num-1-b)+getentries(nfd),b,bufferSize,fieldNo);
 		b+=bufferSize;
-		printf("=======================================================\n" );
-		//i+=bufferSize*17;
 	}
+	//mergesort(nfd,fieldNo,bufferSize);
+	SR_CloseFile(k);
+	SR_CloseFile(fd);
 	return SR_OK;
 }
 
