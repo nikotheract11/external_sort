@@ -122,7 +122,7 @@ SR_ErrorCode SR_SortedFile(
 		else quicksort(nfd,0,16*(blocks_num-1-b)+getentries(nfd),b,bufferSize,fieldNo);
 		b+=bufferSize;
 	}
-	//mergesort(nfd,fieldNo,bufferSize);
+	mergesort(nfd,fieldNo,bufferSize);
 	SR_CloseFile(k);
 	SR_CloseFile(fd);
 	return SR_OK;
