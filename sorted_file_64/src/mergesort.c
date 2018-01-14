@@ -172,7 +172,7 @@ Record selectmax(char **data,Info *info,int *p,int bfsize){
 		int t= info[i].curentrie;
 		//printf("%d\n",t );
 		if(t > 0){
-			temp=getRec(data[i],17-info[i].curentrie);
+			temp=getRec(data[i],getbentries(data[i])-info[i].curentrie);
 			*p=i;
 			return temp;
 		}

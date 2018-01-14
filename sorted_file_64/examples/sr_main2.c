@@ -32,7 +32,7 @@ int main() {
 
 //  SR_PrintAllEntries(fd);
   printf("Sorting 'unsorted_data.db' file in field 'name' ...");
- CALL_OR_DIE(SR_SortedFile("unsorted_data.db", "sorted_name.db", 1, 3));
+ CALL_OR_DIE(SR_SortedFile("unsorted_data.db", "sorted_name.db", 0, 3));
 //	  SR_PrintAllEntries(fd);
  // printf("Sorting 'unsorted_data.db' file in field 'surname' ...");
  // CALL_OR_DIE(SR_SortedFile("unsorted_data.db", "sorted_surname.db", 2, 33))
