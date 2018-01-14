@@ -111,10 +111,11 @@ SR_ErrorCode SR_SortedFile(
 	BF_Init(LRU);
 	SR_OpenFile(input_filename,&fd);
 	nfd=fd;//
-	int k=copyfile(fd);
+//	int k=copyfile(fd);
 	int blocks_num;
 	BF_GetBlockCounter(nfd,&blocks_num);
 	int b=1;
+	//bufferSize=1;	//========== na to sbiswww =========//
 	for(b=1;b<blocks_num;){
 		if(b>=blocks_num) break;
 		//if(i>=blocks_num-1) return SR_OK;
@@ -123,7 +124,7 @@ SR_ErrorCode SR_SortedFile(
 		b+=bufferSize;
 	}
 	mergesort(nfd,fieldNo,bufferSize);
-	SR_CloseFile(k);
+//	SR_CloseFile(k);
 	SR_CloseFile(fd);
 	return SR_OK;
 }

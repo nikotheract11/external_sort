@@ -26,10 +26,10 @@
 int main() {
   BF_Init(LRU);
   CALL_OR_DIE(SR_Init());
-  int fd;
+  int fd,nfd;
 
   SR_OpenFile("unsorted_data.db",&fd);
- // SR_OpenFile("output",&fd);
+
 //  SR_PrintAllEntries(fd);
   printf("Sorting 'unsorted_data.db' file in field 'name' ...");
  CALL_OR_DIE(SR_SortedFile("unsorted_data.db", "sorted_name.db", 1, 3));
@@ -40,6 +40,8 @@ int main() {
   printf("eee=%d\n",getEntries(fd) );
 //  CALL_OR_DIE(SR_SortedFile("unsorted_data.db", "sorted_id.db", 0, 9))
   //CALL_OR_DIE(SR_OpenFile("temp",&fd));
-  SR_PrintAllEntries(fd);
+ // SR_PrintAllEntries(fd);
+  SR_OpenFile("temp",&nfd);
+  SR_PrintAllEntries(nfd);
   BF_Close();
 }
