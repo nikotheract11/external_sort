@@ -13,7 +13,6 @@ struct info{
 typedef struct info Info;
 
 Record selectmax(char **,Info*,int*,int);
-//Record getRec(char*,int);
 int getbentries(char*);
 int output(char* d,Record *r);
 int mergedall(Info *,int);
@@ -26,25 +25,8 @@ void merge(int fd,int nfd,int buffsize,int firstb,int sorted,int field){
 	Record max;
 
 	BF_Block_Init(&outp);
-	//BF_GetBlockCounter(nfd,&bn);
-	/*if(bn < 2){
-	  BF_AllocateBlock(nfd,outp);
-	  outd = BF_Block_GetData(outp);
-	  memset(outd,0,BF_BLOCK_SIZE);
-	  }
-	  else{
-	  BF_GetBlock(nfd,bn-1,outp);
-	  outd = BF_Block_GetData(outp);
-	  }
-	  if(getbentries(outd) >= 17 ){
-	  BF_AllocateBlock(nfd,outp);
-	  outd = BF_Block_GetData(outp);
-	  memset(outd,0,BF_BLOCK_SIZE);
-	  }
-	  */
-	//BF_AllocateBlock(fd,outp);
 	int outi=(buffsize-1)*sorted*firstb+1;
-	BF_GetBlock(nfd,outi,outp);
+	if(BF_GetBlock(nfd,outi,outp)!=BF_OK) return;
 	outd = BF_Block_GetData(outp);
 	memset(outd,0,BF_BLOCK_SIZE);
 	BF_GetBlockCounter(fd,&bn);
@@ -56,7 +38,10 @@ void merge(int fd,int nfd,int buffsize,int firstb,int sorted,int field){
 		info[i].sorted = sorted;
 
 		BF_Block_Init(&(block[i]));
-		if(BF_GetBlock(fd,pos[i],block[i])!= BF_OK) break;
+		if(BF_GetBlock(fd,pos[i],block[i])!= BF_OK){
+			last--;
+			break;
+		}
 		data[i] = BF_Block_GetData(block[i]);
 		info[i].curentrie = getbentries(data[i]);
 		if(getbentries(data[i]) > 17 ) printf("kaooooooooooooooooooo\n" );
@@ -66,7 +51,6 @@ void merge(int fd,int nfd,int buffsize,int firstb,int sorted,int field){
 	while(!mergedall(info,last)){
 		int cmp,merged;
 		max = selectmax(data,info,&merged,last);//getrec(data,0);
-		//		printf("Name:%s\n",max.name );
 		for( i=0;i<=last;i++){
 			if(info[i].curentrie==0){
 				if(--info[i].sorted > 0){
@@ -75,27 +59,20 @@ void merge(int fd,int nfd,int buffsize,int firstb,int sorted,int field){
 					if(BF_GetBlock(fd,info[i].curblock,block[i]) != BF_OK) goto end;
 					data[i] = BF_Block_GetData(block[i]);
 					info[i].curentrie = getbentries(data[i]);
-					//		printf("ERROR ENTRIES\n" );
 				}
 				else continue;
 			}
 			Record cur;
 
 			cur = getRec(data[i],getbentries(data[i])-info[i].curentrie);
-			//	printf("name=%s\n",cur.name );
 			cmp = compare(max,cur,field);
-			//printf("max=%d, cur=%d\n",max.id,cur.id );
 			if(cmp > 0){
 				max = cur;
 				merged = i;
-				//printf("=ooooooooooooooooooooooooooooooooooooooooo=\n" );
 			}
-
 		}
-//		printf("max=%d\n",max.id );
 		int a = output(outd,&max);
 		if(a == 1){
-		//	printf("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n" );
 			BF_Block_SetDirty(outp);
 			BF_UnpinBlock(outp);
 			if(BF_GetBlock(nfd,++outi,outp) !=BF_OK) goto end;
@@ -104,7 +81,6 @@ void merge(int fd,int nfd,int buffsize,int firstb,int sorted,int field){
 		}
 		info[merged].curentrie--;
 	}
-	printf("========================================================\n");
 	end: for(int i=0;i<last;i++){
 		BF_UnpinBlock(block[i]);
 		BF_Block_Destroy(&block[i]);
@@ -116,31 +92,25 @@ void merge(int fd,int nfd,int buffsize,int firstb,int sorted,int field){
 }
 
 int mergesort(int fd,int fieldNo,int bufferSize){
-	int nfd;
-	//SR_CreateFile("output");
-	//	SR_OpenFile("output",&nfd);
-		nfd = copyfile(fd);
-	//	SR_PrintAllEntries(nfd);
+	int nfd,t;
+	nfd = copyfile(fd);
 	int bn,counter=0;
 	BF_GetBlockCounter(fd,&bn);
 	int sorted = bufferSize;
 	int b=0;
-	while(sorted < bn-1){
+	while(sorted < bn){
 		 int b=0;
 		while(b<((bn-1)/sorted)){
 			merge(fd,nfd,bufferSize-1,b,sorted,fieldNo);
 			printf("c=%d\n",++counter );
 			b+=(bufferSize-1);
 		}
-		// BF_GetBlockCounter(fd,&bn);
 		sorted *= (bufferSize - 1);
-		int t = nfd;
+		t = nfd;
 		nfd = fd;
 		fd = t;
 	}
-//nfd = copyfile(fd);
-//merge(fd,nfd,bufferSize-1,0,bufferSize,fieldNo);
-//merge(fd,nfd,bufferSize-1,bufferSize-1,bufferSize,fieldNo);
+	SR_PrintAllEntries(t);
 }
 
 int getbentries(char *data){
@@ -158,26 +128,20 @@ int mergedall(Info *info,int bfsize){
 			merged = 0;
 		break;
 	}
-//	printf("merged=%d\n",merged );
 	return merged;
 }
 
 
 Record selectmax(char **data,Info *info,int *p,int bfsize){
 	Record temp;
-	//	printf("===================\n%d , %d \n",info[0].curblock,info[0].curentrie );
-
 	int i;
 	for(i=0;i<=bfsize;i++){
 		int t= info[i].curentrie;
-		//printf("%d\n",t );
 		if(t > 0){
-			temp=getRec(data[i],17-info[i].curentrie);
+			temp=getRec(data[i],getbentries(data[i])-info[i].curentrie);
 			*p=i;
 			return temp;
 		}
-
-		//return temp;
 	}
 }
 
@@ -194,23 +158,12 @@ Record getRec(char *data,int entrie){
 
 int output(char* d,Record *r){
 	int e;
-//	printf("OOOOOOOOOOOOOOOOOOOOOO\n" );
-//printf("max=%s,%d\n",(*r).name,(*r).id );
 	memcpy(&e,d,sizeof(int));
 	e++;
-	//printf("e=%d\n", e);
 	memcpy(d,&e,sizeof(int));
 	d += (unsigned int) ((e-1)*sizeof(Record)+sizeof(int));
 	memcpy(d,r,sizeof(Record));
-	if(e==17) {
-		//	printf("===========\n");
-		for(int i=0;i<17;i++){
-			Record rec;
-			memcpy(&rec,&d[i*sizeof(Record)+sizeof(int)],sizeof(Record));
-			//printf("name=%s\n",rec.name);
-		}
+	if(e==17)
 		return 1;
-	}
 	return 0;
-
 }
