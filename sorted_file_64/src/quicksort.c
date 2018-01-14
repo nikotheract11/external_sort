@@ -85,7 +85,7 @@ int compare(Record r1,Record r2, int field){
 
 int intcmp(Record r1, Record r2){
 	if(r1.id == r2.id) return 0;
-	else if(r1.id > r2.id) return -1;
+	else if(r1.id < r2.id) return -1;
 	else return 1;
 }
 
