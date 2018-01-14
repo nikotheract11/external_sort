@@ -43,7 +43,7 @@ void merge(int fd,int nfd,int buffsize,int firstb,int sorted,int field){
 	  }
 	  */
 	//BF_AllocateBlock(fd,outp);
-	int outi=1;
+	int outi=(buffsize-1)*sorted*firstb+1;
 	BF_GetBlock(nfd,outi,outp);
 	outd = BF_Block_GetData(outp);
 	memset(outd,0,BF_BLOCK_SIZE);
@@ -125,9 +125,9 @@ int mergesort(int fd,int fieldNo,int bufferSize){
 	BF_GetBlockCounter(fd,&bn);
 	int sorted = bufferSize;
 	int b=0;
-/*	while(sorted < bn){
+	while(sorted < bn-1){
 		 int b=0;
-		while(b<(bn/sorted)){
+		while(b<((bn-1)/sorted)){
 			merge(fd,nfd,bufferSize-1,b,sorted,fieldNo);
 			printf("c=%d\n",++counter );
 			b+=(bufferSize-1);
@@ -137,9 +137,10 @@ int mergesort(int fd,int fieldNo,int bufferSize){
 		int t = nfd;
 		nfd = fd;
 		fd = t;
-	}*/
+	}
 //nfd = copyfile(fd);
-merge(fd,nfd,bufferSize-1,0,bufferSize,fieldNo);
+//merge(fd,nfd,bufferSize-1,0,bufferSize,fieldNo);
+//merge(fd,nfd,bufferSize-1,bufferSize-1,bufferSize,fieldNo);
 }
 
 int getbentries(char *data){
